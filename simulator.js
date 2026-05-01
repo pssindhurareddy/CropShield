@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const WS_URL = 'https://crop-shield-wine.vercel.app';
+const WS_URL = 'wss://cropshield-8dbx.onrender.com/esp32';
 
 let ws;
 let connected = false;
