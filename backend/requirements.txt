@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-socketio
+websockets
+tensorflow
+scikit-learn
+numpy
+Pillow
+python-multipart
+anthropic
+python-dotenv

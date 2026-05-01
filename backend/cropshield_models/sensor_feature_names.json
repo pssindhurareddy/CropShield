@@ -1,0 +1,12 @@
+[
+  "soil_temp_c",
+  "soil_moisture_pct",
+  "soil_ph",
+  "nitrogen_ppm",
+  "phosphorus_ppm",
+  "potassium_ppm",
+  "ambient_humidity_pct",
+  "ambient_temp_c",
+  "light_intensity_lux",
+  "co2_ppm"
+]

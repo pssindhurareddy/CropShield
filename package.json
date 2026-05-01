@@ -1,0 +1,13 @@
+{
+  "name": "cropshield-simulator",
+  "version": "1.0.0",
+  "description": "ESP32 Simulator for CropShield",
+  "main": "simulator.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

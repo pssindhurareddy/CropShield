@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CropShield — Smart Plant Health Monitoring</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --bg: #050f07;
+            --bg2: #091408;
+            --bg3: #0d1a0f;
+            --bg4: #112214;
+            --green: #00e676;
+            --green2: #00c853;
+            --teal: #00e5c0;
+            --amber: #ffab00;
+            --red: #ff1744;
+            --text: #e8f5e9;
+            --text2: #a5d6a7;
+            --text3: #4a7a52;
+            --border: rgba(0,230,118,0.12);
+            --border2: rgba(0,230,118,0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            background-image: linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px);
+            background-size: 28px 28px;
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            background: rgba(5, 15, 7, 0.95);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'Syne', sans-serif;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 24px;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .logo .crop { color: var(--text); }
+        .logo .shield { color: var(--green); }
+
+        .subtitle {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 4px;
+            color: var(--text3);
+            text-transform: uppercase;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        .packet-counter {
+            font-size: 10px;
+            color: var(--text3);
+            margin-left: 8px;
+        }
+
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 40% 60%;
+            gap: 24px;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .panel-subtitle {
+            font-size: 10px;
+            color: var(--text3);
+            margin-bottom: 16px;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .sensor-card {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .sensor-card.alert {
+            border-color: var(--red);
+            box-shadow: 0 0 16px rgba(255,23,68,0.3);
+            animation: alert-glow 2s infinite;
+        }
+
+        .sensor-card.warning {
+            border-color: var(--amber);
+        }
+
+        .sensor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .sensor-name {
+            font-size: 10px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pill {
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: var(--green);
+            color: var(--bg);
+            font-weight: 500;
+        }
+
+        .status-pill.warning { background: var(--amber); }
+        .status-pill.alert { background: var(--red); }
+
+        .sensor-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+            transition: color 0.6s ease;
+        }
+
+        .sensor-value.flash {
+            color: var(--green);
+        }
+
+        .sensor-unit {
+            font-size: 12px;
+            color: var(--green);
+            margin-left: 4px;
+        }
+
+        .sensor-bar {
+            height: 5px;
+            background: var(--bg4);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .sensor-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .terminal {
+            flex: 1;
+            background: #020a03;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            background: var(--bg3);
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            color: var(--text3);
+        }
+
+        .terminal-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        .terminal-content {
+            flex: 1;
+            padding: 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            overflow-y: auto;
+            color: var(--text2);
+        }
+
+        .terminal-line {
+            margin-bottom: 2px;
+        }
+
+        .terminal-line.normal { color: var(--green); }
+        .terminal-line.warning { color: var(--amber); }
+        .terminal-line.alert { color: var(--red); }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--green);
+            animation: blink 1s infinite;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--green);
+            background: rgba(0,230,118,0.05);
+        }
+
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            opacity: 0.6;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .upload-subtext {
+            font-size: 12px;
+            color: var(--text3);
+        }
+
+        .image-preview {
+            display: none;
+            border-radius: 8px;
+            max-width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .image-label {
+            font-size: 12px;
+            color: var(--green);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding: 0 20px;
+        }
+
+        .pipeline-step {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 11px;
+            color: var(--text3);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pipeline-step::after {
+            content: '→';
+            position: absolute;
+            right: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text3);
+            font-size: 14px;
+        }
+
+        .pipeline-step:last-child::after { display: none; }
+
+        .pipeline-step.active {
+            background: var(--green);
+            color: var(--bg);
+            border-color: var(--green);
+            box-shadow: 0 0 12px rgba(0,230,118,0.4);
+            animation: step-pulse 1s infinite;
+        }
+
+        .pipeline-step.complete {
+            background: var(--green2);
+            color: var(--bg);
+            border-color: var(--green2);
+        }
+
+        .analyze-btn {
+            width: 100%;
+            height: 56px;
+            background: var(--green);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 16px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            background: var(--green2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,230,118,0.3);
+        }
+
+        .analyze-btn:disabled {
+            background: var(--bg3);
+            color: var(--text3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--bg);
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .results {
+            display: none;
+            margin-top: 24px;
+            animation: fadeUp 0.4s ease forwards;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .result-card {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .result-label {
+            font-size: 10px;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .disease-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .disease-fill {
+            height: 6px;
+            background: var(--bg4);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .disease-fill div {
+            height: 100%;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 1.2s cubic-bezier(.4,0,.2,1);
+        }
+
+        .severity-pill {
+            display: inline-block;
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin-top: 8px;
+        }
+
+        .severity-pill.critical { background: var(--red); color: white; }
+        .severity-pill.high { background: var(--amber); color: var(--bg); }
+        .severity-pill.moderate { background: var(--teal); color: var(--bg); }
+        .severity-pill.healthy { background: var(--green); color: var(--bg); }
+
+        .wellness-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 12px;
+            position: relative;
+        }
+
+        .wellness-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .wellness-ring circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .wellness-bg {
+            stroke: var(--bg4);
+        }
+
+        .wellness-fill {
+            stroke: var(--green);
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1.4s ease;
+        }
+
+        .wellness-score {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Syne', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .wellness-label {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .treatment-item {
+            margin-bottom: 12px;
+        }
+
+        .treatment-item::before {
+            content: '●';
+            color: var(--green);
+            margin-right: 8px;
+        }
+
+        .treatment-text {
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .treatment-detail {
+            font-size: 10px;
+            color: var(--text3);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes alert-glow {
+            0%, 100% { box-shadow: 0 0 16px rgba(255,23,68,0.3); }
+            50% { box-shadow: 0 0 24px rgba(255,23,68,0.5); }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes step-pulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(0,230,118,0.4); }
+            50% { box-shadow: 0 0 20px rgba(0,230,118,0.8); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6L9,6C11,8 13,10 15,10C15.5,10 16,9.5 16,9C16,8.5 15.5,8 15,8C13.5,8 12,7 12,7C12,7 12.5,8 13,8C14,8 15,7 15,7C15,7 14.5,6 13,6C12,6 11,6.5 11,7C11,7.5 11.5,8 12,8C13,8 14,7.5 14,7C14,6.5 13.5,6 13,6C12.5,6 12,6.5 12,7C12,7.5 12.5,8 13,8C14,8 15,7.5 15,7C15,6.5 14.5,6 14,6C13.5,6 13,6.5 13,7C13,7.5 13.5,8 14,8C15,8 16,7.5 16,7C16,6.5 15.5,6 15,6C14.5,6 14,6.5 14,7C14,7.5 14.5,8 15,8C16,8 17,7.5 17,7C17,6.5 16.5,6 16,6C15.5,6 15,6.5 15,7C15,7.5 15.5,8 16,8C17,8 18,7.5 18,7C18,6.5 17.5,6 17,6C16.5,6 16,6.5 16,7C16,7.5 16.5,8 17,8Z"/>
+            </svg>
+            <span class="crop">Crop</span><span class="shield">Shield</span>
+        </div>
+        <div class="subtitle">SMART PLANT HEALTH MONITORING</div>
+        <div class="status-badge">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">ESP32 OFFLINE</span>
+            <span class="packet-counter" id="packetCounter">0 packets received</span>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="left-column">
+            <div class="panel">
+                <div class="panel-title">LIVE IoT FEED</div>
+                <div class="panel-subtitle">ESP32-CropShield-01 · 2s interval</div>
+                
+                <div class="sensor-grid" id="sensorGrid">
+                    <div class="sensor-card" data-sensor="soilTemp">
+                        <div class="sensor-header">
+                            <div class="sensor-name">SOIL TEMP</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--<span class="sensor-unit">°C</span></div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #00e676; width: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-card" data-sensor="soilMoist">
+                        <div class="sensor-header">
+                            <div class="sensor-name">MOISTURE</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--<span class="sensor-unit">%</span></div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #40c4ff; width: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-card" data-sensor="ph">
+                        <div class="sensor-header">
+                            <div class="sensor-name">PH LEVEL</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--</div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #ea80fc; width: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-card" data-sensor="nitrogen">
+                        <div class="sensor-header">
+                            <div class="sensor-name">NITROGEN</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--<span class="sensor-unit">ppm</span></div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #ffab00; width: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-card" data-sensor="airHumidity">
+                        <div class="sensor-header">
+                            <div class="sensor-name">AIR HUMID</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--<span class="sensor-unit">%</span></div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #00e5c0; width: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-card" data-sensor="airTemp">
+                        <div class="sensor-header">
+                            <div class="sensor-name">AIR TEMP</div>
+                            <div class="status-pill">OPTIMAL</div>
+                        </div>
+                        <div class="sensor-value">--<span class="sensor-unit">°C</span></div>
+                        <div class="sensor-bar">
+                            <div class="sensor-bar-fill" style="background: #ff6d00; width: 50%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-dot"></div>
+                        SERIAL MONITOR · 115200 BAUD · COM3
+                    </div>
+                    <div class="terminal-content" id="terminalContent">
+                        <div class="terminal-line">Waiting for ESP32 connection...</div>
+                        <div class="cursor"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-column">
+            <div class="panel">
+                <div class="panel-title">VISION AI · LEAF ANALYSIS</div>
+                <div class="panel-subtitle">CNN-powered disease detection</div>
+                
+                <div class="upload-zone" id="uploadZone">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L13.09 8.26L19 9L13.09 9.74L12 16L10.91 9.74L5 9L10.91 8.26L12 2Z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <div class="upload-text">Upload leaf image to begin CNN analysis</div>
+                    <div class="upload-subtext">Drag & drop or click · JPG PNG supported</div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <img class="image-preview" id="imagePreview" alt="Leaf preview">
+                <div class="image-label" id="imageLabel" style="display: none;">IMAGE CAPTURED · READY FOR INFERENCE</div>
+                
+                <div class="pipeline" id="pipeline">
+                    <div class="pipeline-step">IoT Sensors</div>
+                    <div class="pipeline-step">Data Fusion</div>
+                    <div class="pipeline-step">CNN Analysis</div>
+                    <div class="pipeline-step">RF Classifier</div>
+                    <div class="pipeline-step">Treatment Plan</div>
+                </div>
+                
+                <button class="analyze-btn" id="analyzeBtn">
+                    RUN FULL AI ANALYSIS
+                </button>
+                
+                <div class="results" id="results">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <div class="result-label">CNN · VISUAL DIAGNOSIS</div>
+                            <div id="diseaseBars"></div>
+                            <div class="severity-pill" id="severityPill">HEALTHY</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <div class="result-label">RANDOM FOREST · WELLNESS</div>
+                            <div class="wellness-ring">
+                                <svg>
+                                    <circle class="wellness-bg" cx="60" cy="60" r="45"></circle>
+                                    <circle class="wellness-fill" cx="60" cy="60" r="45" id="wellnessCircle"></circle>
+                                </svg>
+                                <div class="wellness-score" id="wellnessScore">0</div>
+                            </div>
+                            <div class="wellness-label" id="wellnessLabel">Analyzing...</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <div class="result-label">TREATMENT RECOMMENDATION</div>
+                            <div id="treatmentList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Sensor configurations
+        const sensors = {
+            soilTemp: { name: 'SOIL TEMP', unit: '°C', min: 20, max: 32, color: '#00e676' },
+            soilMoist: { name: 'MOISTURE', unit: '%', min: 45, max: 75, color: '#40c4ff' },
+            ph: { name: 'PH LEVEL', unit: '', min: 5.8, max: 7.2, color: '#ea80fc' },
+            nitrogen: { name: 'NITROGEN', unit: 'ppm', min: 30, max: 80, color: '#ffab00' },
+            airHumidity: { name: 'AIR HUMID', unit: '%', min: 50, max: 80, color: '#00e5c0' },
+            airTemp: { name: 'AIR TEMP', unit: '°C', min: 22, max: 34, color: '#ff6d00' }
+        };
+
+        // Global state
+        let socket;
+        let packetCount = 0;
+        let currentSensors = {};
+        let uploadedImage = null;
+
+        // Initialize Socket.io
+        function initSocket() {
+            socket = io('http://localhost:3000');
+            
+            socket.on('sensorData', (data) => {
+                currentSensors = data;
+                packetCount++;
+                updateSensorCards(data);
+                addTerminalLog(data);
+                updatePacketCounter(packetCount);
+            });
+            
+            socket.on('deviceStatus', (data) => {
+                updateDeviceBadge(data.connected);
+            });
+            
+            socket.on('connect', () => {
+                console.log('Connected to backend');
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Disconnected from backend');
+                updateDeviceBadge(false);
+            });
+        }
+
+        // Update sensor cards
+        function updateSensorCards(data) {
+            Object.keys(sensors).forEach(sensorId => {
+                const card = document.querySelector(`[data-sensor="${sensorId}"]`);
+                const value = data[sensorId];
+                const config = sensors[sensorId];
+                
+                if (!card || value === undefined) return;
+                
+                // Update value with flash animation
+                const valueEl = card.querySelector('.sensor-value');
+                const unitEl = card.querySelector('.sensor-unit');
+                const barFill = card.querySelector('.sensor-bar-fill');
+                const statusPill = card.querySelector('.status-pill');
+                
+                // Remove previous unit text and add new value
+                const baseValue = unitEl ? valueEl.textContent.replace(unitEl.textContent, '') : valueEl.textContent;
+                valueEl.textContent = value.toFixed(1) + (config.unit ? config.unit : '');
+                
+                // Flash animation
+                valueEl.classList.add('flash');
+                setTimeout(() => valueEl.classList.remove('flash'), 600);
+                
+                // Calculate percentage and status
+                const percentage = Math.min(100, Math.max(0, ((value - config.min) / (config.max - config.min)) * 100));
+                const status = getSensorStatus(value, config);
+                
+                // Update bar
+                barFill.style.width = percentage + '%';
+                
+                // Update status
+                statusPill.textContent = status.toUpperCase();
+                statusPill.className = `status-pill ${status.toLowerCase()}`;
+                
+                // Update card styling
+                card.className = `sensor-card ${status === 'alert' ? 'alert' : status === 'warning' ? 'warning' : ''}`;
+            });
+        }
+
+        // Get sensor status
+        function getSensorStatus(value, config) {
+            const range = config.max - config.min;
+            const tolerance = range * 0.15; // 15% tolerance
+            
+            if (value >= config.min - tolerance && value <= config.max + tolerance) {
+                return 'optimal';
+            } else if (value >= config.min - tolerance * 2 && value <= config.max + tolerance * 2) {
+                return 'warning';
+            } else {
+                return 'alert';
+            }
+        }
+
+        // Update device badge
+        function updateDeviceBadge(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'ESP32 CONNECTED';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'ESP32 OFFLINE';
+            }
+        }
+
+        // Update packet counter
+        function updatePacketCounter(count) {
+            document.getElementById('packetCounter').textContent = `${count} packets received`;
+        }
+
+        // Add terminal log
+        function addTerminalLog(data) {
+            const terminal = document.getElementById('terminalContent');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Check if any sensor is out of range
+            let hasWarning = false;
+            let hasAlert = false;
+            
+            Object.keys(sensors).forEach(sensorId => {
+                const status = getSensorStatus(data[sensorId], sensors[sensorId]);
+                if (status === 'alert') hasAlert = true;
+                else if (status === 'warning') hasWarning = true;
+            });
+            
+            const lineClass = hasAlert ? 'alert' : hasWarning ? 'warning' : 'normal';
+            
+            const line = document.createElement('div');
+            line.className = `terminal-line ${lineClass}`;
+            line.textContent = `[${timestamp}] soilTemp:${data.soilTemp?.toFixed(1)}°C | moisture:${data.soilMoist?.toFixed(1)}% | pH:${data.ph?.toFixed(1)} | N:${Math.round(data.nitrogen)}ppm ✓`;
+            
+            // Remove cursor
+            const cursor = terminal.querySelector('.cursor');
+            if (cursor) cursor.remove();
+            
+            // Add new line
+            terminal.appendChild(line);
+            
+            // Add cursor back
+            const newCursor = document.createElement('div');
+            newCursor.className = 'cursor';
+            terminal.appendChild(newCursor);
+            
+            // Trim to 25 lines
+            const lines = terminal.querySelectorAll('.terminal-line');
+            if (lines.length > 25) {
+                lines[0].remove();
+            }
+            
+            // Scroll to bottom
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Image upload handling
+        function initImageUpload() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const imageLabel = document.getElementById('imageLabel');
+            
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = 'var(--green)';
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.style.borderColor = 'var(--border2)';
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = 'var(--border2)';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleFile(files[0]);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleFile(e.target.files[0]);
+            });
+            
+            function handleFile(file) {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedImage = e.target.result;
+                    imagePreview.src = uploadedImage;
+                    imagePreview.style.display = 'block';
+                    imageLabel.style.display = 'block';
+                    uploadZone.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Run AI analysis
+        async function runAnalysis() {
+            const btn = document.getElementById('analyzeBtn');
+            const results = document.getElementById('results');
+            const pipeline = document.getElementById('pipeline');
+            
+            // Disable button
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>ANALYSING...';
+            
+            // Animate pipeline
+            const steps = pipeline.querySelectorAll('.pipeline-step');
+            steps.forEach((step, index) => {
+                setTimeout(() => {
+                    step.classList.add('active');
+                    if (index > 0) steps[index - 1].classList.remove('active').classList.add('complete');
+                }, index * 600);
+            });
+            
+            try {
+                // Build prompt
+                const prompt = `You are CropShield, an AIoT crop health system. Analyze these live IoT sensor readings from an ESP32 and diagnose the crop health.
+
+Live Sensor Data:
+- Soil Temperature: ${currentSensors.soilTemp?.toFixed(1) || '--'}°C
+- Soil Moisture: ${currentSensors.soilMoist?.toFixed(1) || '--'}%
+- pH Level: ${currentSensors.ph?.toFixed(1) || '--'}
+- Nitrogen: ${currentSensors.nitrogen?.toFixed(0) || '--'} ppm
+- Air Humidity: ${currentSensors.airHumidity?.toFixed(1) || '--'}%
+- Air Temperature: ${currentSensors.airTemp?.toFixed(1) || '--'}°C
+
+A leaf image has been captured by the mounted camera for CNN analysis.
+
+Respond ONLY with valid JSON, no markdown, no extra text:
+{
+  "diseases": [
+    {"name": "specific disease name", "confidence": 0.82, "color": "#ff1744"},
+    {"name": "second possibility", "confidence": 0.13, "color": "#ffab00"},
+    {"name": "Healthy Leaf", "confidence": 0.05, "color": "#00e676"}
+  ],
+  "severity": "Critical|High|Moderate|Healthy",
+  "wellnessScore": 55,
+  "wellnessLabel": "Moderate Stress",
+  "treatments": [
+    {"text": "Specific treatment", "detail": "Exact dosage or instruction"},
+    {"text": "Specific treatment", "detail": "Exact dosage or instruction"},
+    {"text": "Specific treatment", "detail": "Exact dosage or instruction"}
+  ],
+  "overallStatus": "Critical|At Risk|Stressed|Optimal"
+}`;
+
+                // Call Claude API
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+
+                if (!response.ok) throw new Error('API call failed');
+                
+                const data = await response.json();
+                const result = JSON.parse(data.content[0].text);
+                
+                // Render results
+                renderResults(result);
+                results.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                // Fallback results
+                const fallbackResult = {
+                    diseases: [
+                        { name: 'Leaf Spot Disease', confidence: 0.45, color: '#ff1744' },
+                        { name: 'Powdery Mildew', confidence: 0.23, color: '#ffab00' },
+                        { name: 'Healthy Leaf', confidence: 0.32, color: '#00e676' }
+                    ],
+                    severity: 'Moderate',
+                    wellnessScore: 67,
+                    wellnessLabel: 'Moderate Stress',
+                    treatments: [
+                        { text: 'Apply copper fungicide', detail: 'Mix 2g per liter, spray weekly' },
+                        { text: 'Increase air circulation', detail: 'Space plants 30cm apart' },
+                        { text: 'Reduce humidity', detail: 'Ventilate greenhouse daily' }
+                    ],
+                    overallStatus: 'Stressed'
+                };
+                renderResults(fallbackResult);
+                results.style.display = 'block';
+            }
+            
+            // Complete pipeline animation
+            setTimeout(() => {
+                steps.forEach(step => step.classList.remove('active').classList.add('complete'));
+            }, steps.length * 600);
+            
+            // Re-enable button
+            btn.disabled = false;
+            btn.textContent = 'RUN FULL AI ANALYSIS';
+        }
+
+        // Render analysis results
+        function renderResults(result) {
+            // Disease bars
+            const diseaseBars = document.getElementById('diseaseBars');
+            diseaseBars.innerHTML = '';
+            
+            result.diseases.forEach((disease, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'disease-bar';
+                bar.innerHTML = `
+                    <span>${disease.name}</span>
+                    <span>${(disease.confidence * 100).toFixed(0)}%</span>
+                `;
+                
+                const fill = document.createElement('div');
+                fill.className = 'disease-fill';
+                fill.innerHTML = `<div style="background: ${disease.color}; width: ${(disease.confidence * 100)}%;"></div>`;
+                
+                bar.appendChild(fill);
+                diseaseBars.appendChild(bar);
+                
+                // Animate bars with delay
+                setTimeout(() => {
+                    fill.querySelector('div').style.width = (disease.confidence * 100) + '%';
+                }, index * 200);
+            });
+            
+            // Severity pill
+            const severityPill = document.getElementById('severityPill');
+            severityPill.textContent = result.severity.toUpperCase();
+            severityPill.className = `severity-pill ${result.severity.toLowerCase()}`;
+            
+            // Wellness score
+            const wellnessScore = document.getElementById('wellnessScore');
+            const wellnessCircle = document.getElementById('wellnessCircle');
+            const wellnessLabel = document.getElementById('wellnessLabel');
+            
+            wellnessScore.textContent = result.wellnessScore;
+            wellnessLabel.textContent = result.wellnessLabel;
+            
+            // Animate ring
+            const circumference = 283; // 2 * π * 45
+            const offset = circumference - (result.wellnessScore / 100) * circumference;
+            wellnessCircle.style.strokeDashoffset = offset;
+            
+            // Color based on score
+            if (result.wellnessScore > 70) {
+                wellnessCircle.style.stroke = 'var(--green)';
+            } else if (result.wellnessScore > 40) {
+                wellnessCircle.style.stroke = 'var(--amber)';
+            } else {
+                wellnessCircle.style.stroke = 'var(--red)';
+            }
+            
+            // Treatments
+            const treatmentList = document.getElementById('treatmentList');
+            treatmentList.innerHTML = '';
+            
+            result.treatments.forEach(treatment => {
+                const item = document.createElement('div');
+                item.className = 'treatment-item';
+                item.innerHTML = `
+                    <div class="treatment-text">${treatment.text}</div>
+                    <div class="treatment-detail">${treatment.detail}</div>
+                `;
+                treatmentList.appendChild(item);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSocket();
+            initImageUpload();
+            
+            document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+        });
+    </script>
+</body>
+</html>

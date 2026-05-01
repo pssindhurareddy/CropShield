@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "author": "CropShield",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp32", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -80, "left": 220, "attrs": { "pin": "15" } },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": 100, "left": 280, "attrs": { "label": "Soil Moisture" } },
+    { "type": "wokwi-potentiometer", "id": "pot2", "top": 180, "left": 280, "attrs": { "label": "pH Sensor" } },
+    { "type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": -80, "left": 380, "attrs": {} },
+    { "type": "wokwi-led", "id": "led1", "top": 260, "left": 130, "attrs": { "color": "green", "label": "STATUS" } },
+    { "type": "wokwi-led", "id": "led2", "top": 260, "left": 160, "attrs": { "color": "red", "label": "ALERT" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 270, "left": 110, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 270, "left": 140, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    ["esp32:GND.1", "dht1:GND", "black", []],
+    ["esp32:3V3", "dht1:VCC", "red", []],
+    ["esp32:15", "dht1:SDA", "green", []],
+    ["esp32:GND.2", "pot1:GND", "black", []],
+    ["esp32:3V3", "pot1:VCC", "red", []],
+    ["esp32:34", "pot1:SIG", "yellow", []],
+    ["esp32:GND.2", "pot2:GND", "black", []],
+    ["esp32:3V3", "pot2:VCC", "red", []],
+    ["esp32:32", "pot2:SIG", "purple", []],
+    ["esp32:GND.1", "ldr1:GND", "black", []],
+    ["esp32:3V3", "ldr1:VCC", "red", []],
+    ["esp32:33", "ldr1:AO", "orange", []],
+    ["esp32:26", "r1:1", "green", []],
+    ["r1:2", "led1:A", "green", []],
+    ["esp32:GND.1", "led1:C", "black", []],
+    ["esp32:27", "r2:1", "red", []],
+    ["r2:2", "led2:A", "red", []],
+    ["esp32:GND.1", "led2:C", "black", []]
+  ],
+  "libraries": [
+    { "name": "WebSockets", "version": "2.4.0" },
+    { "name": "ArduinoJson", "version": "6.21.2" },
+    { "name": "DHT sensor library", "version": "1.4.4" }
+  ]
+}

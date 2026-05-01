@@ -1,0 +1,175 @@
+:root {
+  --bg: #050f07;
+  --bg2: #091408;
+  --bg3: #0d1a0f;
+  --bg4: #112214;
+  --green: #00e676;
+  --green2: #00c853;
+  --teal: #00e5c0;
+  --amber: #ffab00;
+  --red: #ff1744;
+  --text: #e8f5e9;
+  --text2: #a5d6a7;
+  --text3: #4a7a52;
+  --border: rgba(0,230,118,0.12);
+  --border2: rgba(0,230,118,0.3);
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  overflow-y: scroll !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  -webkit-overflow-scrolling: touch;
+  background-image:
+    linear-gradient(rgba(0,230,118,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,230,118,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* SCROLLBAR - ALWAYS VISIBLE, LARGE, BRIGHT GREEN */
+::-webkit-scrollbar {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg2) !important;
+  border-left: 2px solid var(--border2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--green) !important;
+  border-radius: 10px;
+  border: 3px solid var(--bg2);
+  min-height: 50px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--green2) !important;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #00ff88 !important;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thick;
+  scrollbar-color: var(--green) var(--bg2);
+}
+
+/* Layout structures */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: max-content;
+  overflow: visible !important;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 1.5rem;
+  padding: 1.5rem 2.5rem 30rem 2.5rem;
+  align-items: start;
+  width: 100%;
+  min-height: max-content;
+  height: auto;
+  overflow: visible !important;
+}
+
+.left-panel, .right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  height: auto;
+  overflow: visible !important;
+}
+
+/* CRITICAL: Remove any hidden overflow */
+.left-panel * {
+  overflow: visible !important;
+}
+
+.right-panel * {
+  overflow: visible !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .left-panel, .right-panel {
+    gap: 1rem;
+  }
+
+  .analyze-button {
+    height: auto !important;
+    min-height: 48px;
+    font-size: 14px !important;
+  }
+}
+
+/* Force scrolling visibility */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Ensure main content never constrains scrolling */
+.main-content * {
+  overflow: visible;
+}
+
+/* Ensure all panels allow overflow naturally */
+.left-panel > *,
+.right-panel > * {
+  overflow: visible;
+}
+
+/* Additional touch-friendly styles */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch devices */
+  * {
+    -webkit-tap-highlight-color: rgba(0, 230, 118, 0.1);
+  }
+
+  button {
+    min-height: 44px; /* iOS touch target minimum */
+  }
+}
